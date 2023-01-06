@@ -1,0 +1,23 @@
+
+.link-button {
+    margin-top: 10px;
+    margin-right: 50px;
+    vertical-align: top;
+    color: white;
+}
+
+.link-button-2 {
+    margin-top: 10px;
+    margin-right: 50px;
+}
+
+.link-button-3 {
+    display: flex;
+    float: left;
+    width: 450px;
+    margin-right: 80px;
+}
+
+
+
+
