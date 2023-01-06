@@ -46,9 +46,9 @@ app.layout = html.Div(
                 [
                     html.Div(
                         [
-                            html.H4("DASHBOARD + TEST FOOTBALL2D ANIMATION", className="app__header__title"),
+                            html.H4("DASHBOARD + FOOTBALL2D ANIMATION", className="app__header__title"),
                             html.P(
-                                "This app continually queries a SQL database and displays live charts of wind speed and wind direction.",
+                                "This application displays a dashboard for football. The Python language was used for the data processing part and the Dash and Plotly libraries for their visualization and interaction.",
                                 className="app__header__title--grey",
                                 ),
                             ],
