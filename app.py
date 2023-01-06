@@ -1,24 +1,31 @@
 import os
 import dash
 import pandas as pd
-from plotly import animation
-import plotly.graph_objects as go
 import glob
 from dash import Input, Output, dcc, html
-from function import football2D, get_events, invert_get_events, metrics, speed_areas, speed_time
-from plotly.subplots import make_subplots
-import plotly.express as px
+from data_functions import football2D, get_events, invert_get_events, metrics, speed_areas, speed_time
+from plot_functions import animation_2D, bar_plot, radar_chart, scatter_plot
 
 GRAPH_INTERVAL = os.environ.get("GRAPH_INTERVAL", 5000)
 
-# Chargement des données de l'équipe à domicile
+#  Path data
 df_away = pd.read_csv("./data/Sample_Game_1/Sample_Game_1_RawTrackingData_Away_Team.csv", skiprows=2)
 df_home = pd.read_csv("./data/Sample_Game_1/Sample_Game_1_RawTrackingData_Home_Team.csv", skiprows=2)
 events_path = "./data/Sample_Game_1/Event.csv"
+players = glob.glob("./data/Sample_Game_1/players/*Trajectory.csv")
 
+# Load data : radar_chart
 events = get_events(events_path)
 invert_events = invert_get_events(events)
 
+# Load data : animation_2D
+data_animation = football2D(df_home, df_away)
+
+# Data subplot : scatter + bar
+df_update_movement = metrics(players)
+df_update_movement.drop(27646, axis=0, inplace=True) # Transition des données entre la MT1 et la MT2
+
+# Layout
 app = dash.Dash(
 
         __name__,
@@ -59,52 +66,51 @@ app.layout = html.Div(
 
             html.Div([
                 html.Div(
-                dcc.Dropdown(
-                    id="dropdown",
-                    placeholder="Sélectionner joueur...",
-                    options=invert_events.columns,
-                    value=None,
-                    clearable=False,
-                    style=
+                    dcc.Dropdown(
+                        id="dropdown",
+                        placeholder="Sélectionner joueur...",
+                        options=invert_events.columns,
+                        value="Gael CLICHY",
+                        clearable=False,
+                        style=
                         {
                             "width": "100%",
                             }
-                    ), className="link-button-3"),
-                html.Div(
-                dcc.Dropdown(
-                    id="dropdown2",
-                    placeholder="Sélectionner joueur...",
-                    options=invert_events.columns,
-                    value=None,
-                    clearable=False,
-                    style=
-                        {
-                            "width": "100%",
-                            }
-                    ), className="link-button-3"),
-                dcc.Input(
-                    id="time-min",
-                    placeholder="Entrer début séquence...",
-                    type="number",
-                    value=None,
-                    style=
-                    {
-                        "margin-right": "73px",
-                        }
-                    ),
-                dcc.Input(
-                    id="time-max",
-                    placeholder="Entrer fin de séquence...",
-                    type="number",
-                    value=None,
-                    style={
-                      'background-color': 'white',
-                     }
-                    ),
-                ], className="link-button-2"),
+                        ), className="link-button-3"),
+                    html.Div(
+                        dcc.Dropdown(
+                            id="dropdown2",
+                            placeholder="Sélectionner joueur...",
+                            options=invert_events.columns,
+                            value="Alexis SANCHEZ",
+                            clearable=False,
+                            style=
+                            {
+                                "width": "100%",
+                                }
+                            ), className="link-button-3"),
+                        dcc.Input(
+                            id="time-min",
+                            placeholder="Entrer début séquence...",
+                            type="number",
+                            value=0,
+                            style=
+                            {
+                                "margin-right": "73px",
+                                }
+                            ),
+                        dcc.Input(
+                            id="time-max",
+                            placeholder="Entrer fin de séquence...",
+                            type="number",
+                            value=5,
+                            style={
+                                'background-color': 'white',
+                                }
+                            ),
+                        ], className="link-button-2"),
         html.Div(
                 [
-                    # wind speed
                     html.Div(
                         [
                             html.Div(
@@ -117,7 +123,6 @@ app.layout = html.Div(
                         ),
                     html.Div(
                         [
-                            # histogram
                             html.Div(
                                 [
                                     html.Div(
@@ -137,7 +142,6 @@ app.layout = html.Div(
                                     ],
                                 className="graph__container first",
                                 ),
-                            # wind direction
                             html.Div(
                                 [
                                     html.Div(
@@ -149,7 +153,6 @@ app.layout = html.Div(
                                         ),
                                     dcc.Graph(
                                         id="animation-2D",
-                                        # figure=football2D(df_home, df_away, 50, 55)
                                         ),
                                     ],
                                 className="graph__container second",
@@ -157,160 +160,67 @@ app.layout = html.Div(
                             ],
                         className="one-third column histogram__direction",
                         ),
-            ],
+                    ],
             className="app__content",
         ),
     ],
     className="app__container",
 )
+
+# Callback - Update plots
+
 @app.callback(
         Output("graph2", "figure"),
-        Input("dropdown", "value"),
-        Input("dropdown2", "value"),
-        Input("time-min", "value"),
-        Input("time-max", "value"),
-        )
-
-def update_movement(player1, player2, min, max):
-
-    players = glob.glob("./data/Sample_Game_1/players/*Trajectory.csv")
-    df = metrics(players)
-    df.drop(27646, axis=0, inplace=True) # Transition des données entre la MT1 et la MT2
-
-    speedP1 = speed_time(df, min, max, player1)
-    speedP2 = speed_time(df, min, max, player2)
-    print(speedP1.columns)
-    # Plot
-    # fig = go.Figure(data=[
-        #     go.Scatter(go.Scatter(name=player1, x=speedP1[f"{player1}_x"], y=speedP1[f"{player1}_y"], mode="markers",
-                                    #                           marker= dict(size=1, color=['#d7e832' if s < 6 else '#d043de' for s in speedP1[f"{player1}_speed"]]))),
-        #     go.Scatter(go.Scatter(name=player2, x=speedP2[f"{player2}_x"], y=speedP2[f"{player2}_y"])),
-        #     ])
-
-    # Change the bar mode
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(name=player1, x=speedP1["Time"], y=speedP1[f"{player1}_speed"]),
-                  )
-
-    fig.add_trace(go.Scatter(name=player2, x=speedP2["Time"], y=speedP2[f"{player2}_speed"]),
-                  )
-    fig.update_layout(barmode="group", template="plotly_dark",
-                      )
-
-    return fig
-
-@app.callback(
         Output("graph3", "figure"),
-        Input("dropdown", "value"),
-        Input("dropdown2", "value"),
-        Input("time-min", "value"),
-        Input("time-max", "value"),
+        Input("dropdown", "value"),  # player1
+        Input("dropdown2", "value"),  # player2
+        Input("time-min", "value"),  # min
+        Input("time-max", "value"),  # max
         )
 
-def update_speed_areas(player1, player2, min, max):
+def update_movement_speed(player1, player2, min, max):
 
-    players = glob.glob("./data/Sample_Game_1/players/*Trajectory.csv")
-    df = metrics(players)
-    df.drop(27646, axis=0, inplace=True) # Transition des données entre la MT1 et la MT2
+    # Setup data
+    speedP1 = speed_time(df_update_movement, min, max, player1)
+    speedP2 = speed_time(df_update_movement, min, max, player2)
 
-    areas = ["z1", "z2", "z3", "z4", "z5"]
-    areasP1 = speed_areas(df, min, max, player1)
-    areasP2 = speed_areas(df, min, max, player2)
+    areasP1 = speed_areas(df_update_movement, min, max, player1)
+    areasP2 = speed_areas(df_update_movement, min, max, player2)
 
-    fig = go.Figure(data=[
-        go.Bar(go.Bar(name=player1, x=areas, y=areasP1)),
-        go.Bar(go.Bar(name=player2, x=areas, y=areasP2)),
-        ])
+    # Load plots
+    scatter = scatter_plot(speedP1, speedP2, player1, player2)
+    bar = bar_plot(areasP1, areasP2, player1, player2)
 
-    # Change the bar mode
-
-    fig.update_layout(barmode="group", template="plotly_dark",
-                      height=516
-                      )
-
-    return fig
-# def update_speed_areas(player1, player2, min, max):
-#
-#     players = glob.glob("./data/Sample_Game_1/players/*Trajectory.csv")
-#     df = metrics(players)
-#     df.drop(27646, axis=0, inplace=True) # Transition des données entre la MT1 et la MT2
-#
-#     speedP1 = speed_time(df, min, max, player1)
-#     speedP2 = speed_time(df, min, max, player2)
-#
-#     areas = ["z1", "z2", "z3", "z4", "z5"]
-#     areasP1 = speed_areas(df, min, max, player1)
-#     areasP2 = speed_areas(df, min, max, player2)
-#
-#     fig = make_subplots (rows=2,cols=1, vertical_spacing=0.2,
-                           #                              specs=[[{"type": "scatter"}], [{"type": "bar"}]])
-#
-#     fig.add_trace(go.Scatter(name=player1, x=speedP1["Time"], y=speedP1[f"{player1}_speed"]),
-                    #             row=1, col=1
-                    #         )
-#
-#     fig.add_trace(go.Scatter(name=player2, x=speedP2["Time"], y=speedP2[f"{player2}_speed"]),
-                    #             row=1, col=1
-                    #         )
-#
-#     fig.add_trace(go.Bar(name=player1, x=areas, y=areasP1),
-                    #                  row=2, col=1)
-#
-#     fig.add_trace(go.Bar(name=player2, x=areas, y=areasP2),
-                    #                  row=2, col=1)
-#
-#     fig.update_layout(template="plotly_dark",
-                        #                       height=700,
-                        #                       )
-#
-#     return fig
+    return scatter, bar
 
 @app.callback(
         Output("animation-2D", "figure"),
-        Input("time-min", "value"),
-        Input("time-max", "value")
+        Input("time-min", "value"),  # min
+        Input("time-max", "value"),  # max
         )
 
 def update_animation_2D(min, max):
-    df_away = pd.read_csv("./data/Sample_Game_1/Sample_Game_1_RawTrackingData_Away_Team.csv", skiprows=2)
-    df_home = pd.read_csv("./data/Sample_Game_1/Sample_Game_1_RawTrackingData_Home_Team.csv", skiprows=2)
-    fig=football2D(df_home, df_away, min, max)
+
+    # Load plot
+    fig = animation_2D(data_animation, min, max)
+
     return fig
 
 @app.callback(
         Output("graph", "figure"),
-        Input("dropdown", "value"),
-        Input("dropdown2", "value"))
+        Input("dropdown", "value"),  # player
+        Input("dropdown2", "value"),  # player2
+        )
 
 def update_radar_chart(player, player2):
 
-    df = get_events(events_path)
-    df = df[["Players", "Shot", "Dribble", "Foul", "Block", "Tackle", "Header",]]
-    df = invert_get_events(df)
+    # Setup data
+    data = events[["Players", "Shot", "Dribble", "Foul", "Block", "Tackle", "Header"]]
+    df_radar = invert_get_events(data)
 
-    fig = go.Figure()
+    # Load plot
+    fig = radar_chart(df_radar, player, player2)
 
-    fig.add_trace(go.Scatterpolar(
-        r=df[player],
-        theta=df.index,
-        fill='toself',
-        name=player,
-        ))
-    fig.add_trace(go.Scatterpolar(
-        r=df[player2],
-        theta=df.index,
-        fill='toself',
-        name=player2
-        ))
-    fig.update_layout(
-            template="plotly_dark",
-            polar=dict(
-                radialaxis=dict(
-                    visible=True
-                    ),
-                ),
-            # showlegend=False
-            )
     return fig
 
 if __name__ == "__main__":
