@@ -1,9 +1,8 @@
 import numpy as np
 import pandas as pd
 
-# Renommer les colomnes pour avoir x and y en suffixes
+# Renommer les colonnes pour avoir x and y en suffixes
 def set_col_names(df):
-    """ Renames the columns to have x and y suffixes."""
     cols = list(np.repeat(df.columns[3::2], 2))
     cols = [col+'_x' if i % 2 == 0 else col+'_y' for i, col in enumerate(cols)]
     cols = np.concatenate([df.columns[:3], cols])
@@ -11,7 +10,6 @@ def set_col_names(df):
 
 # Convertir mon fichier de format long à wide
 def to_long_form(df):
-    """ Pivots a dataframe from wide-form (each player as a separate column) to long form (rows)"""
     df = pd.melt(df, id_vars=df.columns[:3], value_vars=df.columns[3:], var_name='player')
     df.loc[df.player.str.contains('_x'), 'coordinate'] = 'x'
     df.loc[df.player.str.contains('_y'), 'coordinate'] = 'y'
@@ -21,6 +19,7 @@ def to_long_form(df):
           .unstack()
           .reset_index()
           .rename_axis(None, axis=1))
+
     return df
 
 # Créer une animation 2D du match à partir des données de position des joueurs
@@ -46,26 +45,24 @@ def football2D(home_file, away_file):
     n = 20
     df_mean = pd.DataFrame(df.groupby(np.arange(len(df))//n).mean())
 
-    ##############################################################################
-    # Subset 2 seconds of data
-    #df_mean = df_mean[(df_mean['Time [min]'] >= time_min) & (df_mean['Time [min]'] <= time_max)].copy()
-
+    # Renommer nom de colonne player30 pour Ball
     df_mean.rename(columns={'Ball_x':'Player30_x', 'Ball_y':'Player30_y'}, inplace=True)
+
     # Convertir les dotaframes en format long pour que chaques lignes correspondent aux coordonnées d'un joueur pour une seule frame
     df_mean = to_long_form(df_mean)
     df_mean = df_mean.astype({'player': 'float'})
 
-    # create a list of our conditions
+    # Créer une liste des conditions
     conditions = [
             (df_mean['player'] <= 14),
             (df_mean['player'] > 14) & (df_mean['player'] <= 29),
             (df_mean['player'] == 30)
             ]
 
-    # create a list of the values we want to assign for each condition
+    # créer une liste de valeurs que nous voulons assigner for chaque condition
     values = ['home', 'away', 'ball']
 
-    # create a new column and use np.select to assign values to it using our lists as arguments
+    # créer une nouvelle colonn et utiliser np.select pour lui attribuer sa valeur en utilisant nos listes comme arguments
     df_mean['team'] = np.select(conditions, values)
     df_mean['size'] = np.where(df_mean['player'] != 30, 0.5, 0.2)
     df_mean["Time [min]"] = round(df_mean["Time [min]"], 2)
@@ -76,7 +73,6 @@ def football2D(home_file, away_file):
 # Obtenir les events pour tous les joueurs
 def get_events(csv_path):
     df = pd.read_csv(csv_path, delimiter=",")
-
     cols = df["EventName"].unique()
     players = df["Player1Name"].unique()
     df_events = pd.DataFrame(0, index=players, columns=cols, )
@@ -85,32 +81,38 @@ def get_events(csv_path):
     for i in range(0, len(df)):
         index = df_events.index[df_events["Players"] == df["Player1Name"][i]].tolist()
         df_events.loc[index, df["EventName"][i]] += 1
+
     return df_events
 
+# Setup get_events pour notre radar
 def invert_get_events(dataframe):
     df = dataframe
     df = df.T
     df = df.rename(columns={np.nan: 'type'})
     df.drop(index="Players", axis=0, inplace=True)
     df = df.astype("int")
+
     return df
 
+# créer une dataframe avec le temps, les coordonnées, la distance + vitesse entre deux frames pour l'ensemble des joueurs
 def metrics(dataFiles):
+    # Data
     df = pd.DataFrame()
-    # lire l'ensemble des fichiers de notre listData
+
+    # Lire l'ensemble des fichiers de notre listData
     for files in dataFiles:
         csv = pd.read_csv(f"{files}", delimiter=",")
 
-        # récupérer le nom des joueurs
+        # Récupérer le nom des joueurs
         playerName = csv.loc[1, "Player1Name"]
 
-        # calculer la distance de course parcourue
+        # Calculer la distance de course parcourue
         dist = np.sqrt(np.diff(csv["XPos"])**2 + np.diff(csv["Ypos"])**2)
 
-        # calculer la vitesse
+        # Calculer la vitesse
         vit = (dist/0.1)*3.6
 
-        # calculer le temps de jeu pour
+        # Mettre le temps de jeu en min
         csv.loc[csv["Half"] == "First Half", "Time"] = csv["Time"]/60
         csv.loc[csv["Half"] == "Second Half", "Time"] = (csv["Time"]/60)+45
 
@@ -119,9 +121,11 @@ def metrics(dataFiles):
         df[f"{playerName}_y"] = csv["Ypos"]
         df[f"{playerName}_dist"] = pd.Series(dist)
         df[f"{playerName}_speed"] = pd.Series(vit)
+
     return df
 
 def speed_time(dataframe, min, max, player_name):
+    # Data
     df = dataframe
 
     # Récupérer les données du joueur sélectionné
@@ -136,6 +140,7 @@ def speed_time(dataframe, min, max, player_name):
     return df
 
 def speed_areas(dataframe, min, max, player_name):
+    # Data
     df = dataframe
 
     # Récupérer les données du joueur sélectionné
@@ -147,7 +152,7 @@ def speed_areas(dataframe, min, max, player_name):
     # Sélectionner les données par rapport à la séquence de temps choisie en paramètre
     df = df.loc[(df["Time"] >= min) & (df["Time"] <= max)]
 
-    # z1 = df.loc[df[f"{player_name}_speed"] < 6, f"{player_name}_dist"].sum(axis=0) # une méthode classique qui peut être utilisé
+    # Calculer la distance parcourue pour chaque zone d'intensité
     z1 = round(sum(x for x, y in zip(df[f"{player_name}_dist"], df[f"{player_name}_speed"]) if y < 6), 2)
     z2 = round(sum(x for x, y in zip(df[f"{player_name}_dist"], df[f"{player_name}_speed"]) if y >= 6 and y < 10), 2)
     z3 = round(sum(x for x, y in zip(df[f"{player_name}_dist"], df[f"{player_name}_speed"]) if y >= 10 and y < 14), 2)
