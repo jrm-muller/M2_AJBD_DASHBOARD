@@ -5,6 +5,8 @@ import glob
 from dash import Input, Output, dcc, html
 from data_functions import football2D, get_events, invert_get_events, metrics, speed_areas, speed_time
 from plot_functions import animation_2D, bar_plot, radar_chart, scatter_plot
+import warnings
+warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
 GRAPH_INTERVAL = os.environ.get("GRAPH_INTERVAL", 5000)
 
@@ -56,7 +58,8 @@ app.layout = html.Div(
                         [
                             html.A(
                                 html.Button("SOURCE CODE", className="link-button"),
-                                href="https://github.com/plotly/dash-sample-apps/tree/main/apps/dash-wind-streaming",
+                                href="https://github.com/jrm-muller/M2_AJBD_DASHBOARD",
+                                target="_blank"
                                 ),
                             ],
                         ),
@@ -179,7 +182,6 @@ app.layout = html.Div(
         )
 
 def update_movement_speed(player1, player2, min, max):
-
     # Setup data
     speedP1 = speed_time(df_update_movement, min, max, player1)
     speedP2 = speed_time(df_update_movement, min, max, player2)
@@ -200,7 +202,6 @@ def update_movement_speed(player1, player2, min, max):
         )
 
 def update_animation_2D(min, max):
-
     # Load plot
     fig = animation_2D(data_animation, min, max)
 
@@ -213,7 +214,6 @@ def update_animation_2D(min, max):
         )
 
 def update_radar_chart(player, player2):
-
     # Setup data
     data = events[["Players", "Shot", "Dribble", "Foul", "Block", "Tackle", "Header"]]
     df_radar = invert_get_events(data)
