@@ -1,3 +1,4 @@
+from re import template
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -122,5 +123,15 @@ def radar_chart(df, player, player2):
                 size=10,
                 color="#CBCBCB"
                 )
+            )
+    return fig
+
+def events_position(data):
+    # Créer le plot
+    fig = px.scatter(data, x="XPosOrigin", y="YPosOrigin")
+    fig.update_layout(
+            yaxis_range=[-34, 34],
+            xaxis_range=[-55, 55],
+            template="plotly_dark",
             )
     return fig

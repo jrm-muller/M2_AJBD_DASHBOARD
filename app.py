@@ -4,7 +4,7 @@ import pandas as pd
 import glob
 from dash import Input, Output, dcc, html
 from data_functions import football2D, get_events, invert_get_events, metrics, speed_areas, speed_time
-from plot_functions import animation_2D, bar_plot, radar_chart, scatter_plot
+from plot_functions import animation_2D, bar_plot, events_position, radar_chart, scatter_plot
 import warnings
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
@@ -17,8 +17,11 @@ events_path = "./data/Sample_Game_1/Event.csv"
 players = glob.glob("./data/Sample_Game_1/players/*Trajectory.csv")
 
 # Load data : radar_chart
+raw_events = pd.read_csv(events_path, delimiter=",")
 events = get_events(events_path)
 invert_events = invert_get_events(events)
+list_events = events.columns
+
 
 # Load data : animation_2D
 data_animation = football2D(df_home, df_away)
@@ -33,7 +36,8 @@ app = dash.Dash(
         __name__,
         meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
         )
-app.title = "Wind Speed Dashboard"
+
+app.title = "Dashboard M2 AJBD"
 
 server = app.server
 
@@ -46,7 +50,7 @@ app.layout = html.Div(
                 [
                     html.Div(
                         [
-                            html.H4("DASHBOARD + FOOTBALL2D ANIMATION", className="app__header__title"),
+                            html.H4("DASHBOARD", className="app__header__title"),
                             html.P(
                                 "This application displays a dashboard for football. The Python language was used for the data processing part and the Dash and Plotly libraries for their visualization and interaction.",
                                 className="app__header__title--grey",
@@ -77,7 +81,7 @@ app.layout = html.Div(
                         clearable=False,
                         style=
                         {
-                            "width": "100%",
+                            "width": "200px",
                             }
                         ), className="link-button-3"),
                     html.Div(
@@ -89,7 +93,7 @@ app.layout = html.Div(
                             clearable=False,
                             style=
                             {
-                                "width": "100%",
+                                "width": "200px",
                                 }
                             ), className="link-button-3"),
                         dcc.Input(
@@ -99,7 +103,7 @@ app.layout = html.Div(
                             value=0,
                             style=
                             {
-                                "margin-right": "73px",
+                                "width": "200px",
                                 }
                             ),
                         dcc.Input(
@@ -108,10 +112,21 @@ app.layout = html.Div(
                             type="number",
                             value=5,
                             style={
-                                'background-color': 'white',
+                                "width": "200px",
+                                "margin-left": "25px",
                                 }
                             ),
-                        ], className="link-button-2"),
+                        dcc.Dropdown(
+                            id="events",
+                            options=list_events,
+                            placeholder="Sélectionner l'évènement...",
+                            value="",
+                            style={
+                                "display": "flex",
+                                "width": "200px",
+                                }
+                            ),
+                        ] ),
         html.Div(
                 [
                     html.Div(
@@ -119,7 +134,16 @@ app.layout = html.Div(
                             html.Div(
                                 [html.H6("SPEED OF MOVEMENT & DISTANCE/INTENSITY ZONE", className="graph__title")],
                                 ),
-                            dcc.Graph(id="graph2"),
+                            dcc.Tabs([
+                                dcc.Tab(label="Speed comparison", children=[
+                                    dcc.Graph(id="graph2"),
+                                    ]
+                                        ),
+                                dcc.Tab(label="Events position", children=[
+                                    dcc.Graph(id="graph4"),
+                                    ]
+                                        ),
+                                ], className="tab_selected_style"),
                             dcc.Graph(id="graph3"),
                             ],
                         className="two-thirds column wind__speed__container",
@@ -223,5 +247,18 @@ def update_radar_chart(player, player2):
 
     return fig
 
+@app.callback(
+        Output("graph4", "figure"),
+        Input("events", "value"),  # player1
+        )
+def update_heatmap_p1(events):
+
+    # Récupérer les données du joueur sélectionné
+    df = raw_events.loc[raw_events["EventName"] == events]
+
+    # Load plot
+    fig = events_position(df)
+
+    return fig
 if __name__ == "__main__":
     app.run_server(debug=True)
