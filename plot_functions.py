@@ -129,9 +129,20 @@ def radar_chart(df, player, player2):
 def events_position(data):
     # Créer le plot
     fig = px.scatter(data, x="XPosOrigin", y="YPosOrigin")
+
     fig.update_layout(
             yaxis_range=[-34, 34],
             xaxis_range=[-55, 55],
+            barmode="group",
             template="plotly_dark",
+            title="Position of the selected event",
+            # xaxis_title="Time (min)",
+            # yaxis_title="Speed (km/h)",
+            legend_title="Players",
+            font=dict(
+                family="Open Sans, sans-serif",
+                size=10,
+                color="#CBCBCB"  #506070
+                )
             )
     return fig
